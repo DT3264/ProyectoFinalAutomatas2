@@ -1,0 +1,36 @@
+public class MiClase{
+	//Comentario en clase
+	/*
+	*Comentario multilinea en clase
+	*/
+	int varGlobal;
+	void metodo(){
+		metodo();
+	}
+       	public static void main(String [] args){
+       	}
+	int main(){
+		//Comentario local
+		/*
+		*Comentario multilinea local
+		*/
+		int dentroDeMetodo;
+		if(var1<var2){
+			if(calificacionExamen>=calificacionMinima){
+			}
+			else{
+				reprobado();
+			}
+		}
+		else if(var1>var2){
+		}
+		else{
+		}
+		dentroDeMetodo=12;		
+		dentroDeMetodo="Error";
+	}
+	String metodoDespuesDeMain(){
+		int respuesta;
+		respuesta=busca(izq, der, valor, lista);
+	}
+}

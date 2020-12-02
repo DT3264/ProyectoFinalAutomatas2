@@ -1,0 +1,23 @@
+public class MiClase{
+	//Comentario de una linea
+	/*
+	juasjuas
+	*/
+	int global=2;
+	String strGlobal="soy global";
+	int metodo1(){
+		int local=1;
+	}
+	int metodo2(){
+		if(true){
+			int localEnIf=0;
+		}
+		if(false){
+			int localEnIf=0;
+		}
+		int local2=2;
+		String localStr = "str";
+		localStr=a;
+	}
+	MiClase(){}
+}

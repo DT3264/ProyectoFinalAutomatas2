@@ -1,0 +1,168 @@
+/* ----------------------Preliminary Declarations Section--------------------*/
+package DanielC_EXA_U6;
+import java_cup.runtime.*;
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.ArrayList;
+/* Parser code to change the way the parser reports errors (include
+   line and column number of the error). */
+parser code {:
+
+String error = null;
+    public ArrayList<Deteccion> detecciones = new ArrayList<>();
+    //Throws the exception after being generated on syntax_error
+    public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
+        throw new Exception(error);
+    }
+    //Generates the error message
+    public void syntax_error(Symbol s) {
+        //report_error("Error de sintaxis en linea " + s.left, null);
+        StringBuilder exceptionMessage = new StringBuilder();
+        //Se le tiene que insistir un poquito para que actualice los tokens esperados
+        report_expected_token_ids();
+        report_expected_token_ids();
+        List<Integer> expectedTokens=expected_token_ids();
+        
+        int line = ((Lexer)(getScanner())).getyyline();
+        int column = ((Lexer)(getScanner())).getyycolumn();
+        exceptionMessage.append(String.format("Error sintáctico.\nEn linea %d, columna %d se esperaba algún [", (line+1), (column+1)));
+        int expectedTokensCount=0;
+        for(int expectedTokenVal : expectedTokens){
+            String token = getTokenName(expectedTokenVal);
+            if(expectedTokensCount++>0) exceptionMessage.append(",");
+            exceptionMessage.append(token);
+        }
+        exceptionMessage.append("]");
+        error = exceptionMessage.toString();
+    }
+    //Gets a symbol name given its value
+    String getTokenName(int expectedToken){
+        for(Field field : sym.class.getDeclaredFields()){
+            try{
+                int fieldVal=field.getInt(field);
+                if(expectedToken==fieldVal) return field.getName();
+            }
+            catch(Exception e){}
+        }
+        return "";
+    }
+    public void mensaje(String msg){
+        System.out.println(msg);
+    }
+    public void detecta(String token, String lexema, int linea){
+        detecciones.add(new Deteccion(token, lexema, linea));
+    }
+:};
+   
+
+   
+/* ------------Declaration of Terminals and Non Terminals Section----------- */
+/*Terminales en mayúsculas, no terminales en minúsculas*/
+   
+terminal String         
+MAS, MENOS, POR, DIV, MOD, IGUAL, DIA, DIC, AND, OR, NOT, PAA, PAC, LLA,
+LLC, COA, COC, PUNTO, SPREG, PCOMA, COMA, DPUNTOS, EXTENDS,
+SWITCH, ABSTRACT, IF, CLASS, DO, THIS, BREAK, TRY, CATCH, DEFAULT,
+FOR, IMPORT, NEW, PACKAGE, RETURN, SUPER, ELSE, WHILE, FINAL, VOID,
+STATIC, ID, INT, LONG, DOUBLE, FLOAT, CHAR, SHORT, BYTE, BOOLEAN, STRING, 
+LINT, LDOUBLE, LBOOL, LCHAR, LSTRING, SLCOMMENT, MLCOMMENT, PUBLIC, PRIVATE, PROTECTED;
+
+non terminal String     
+compilation_unit, program, main_class, class_def, field_declaration,
+method_declaration, constructor_declaration, variable_definitor,
+variable_initializer, parameters, statement_block, type,
+statement, comment, fields_declaration, expression, literal, parameter_list,
+complex_id, complex_id_body, variable_definition, else_if, statements, modif;
+
+/* ----------------------------Grammar Section-------------------- */   
+compilation_unit ::=     
+program;
+
+program ::=
+main_class   |
+comment main_class;
+
+main_class ::= 
+modif CLASS ID:id LLA class_def LLC {:detecta("Clase", id,(idleft+1));:} |
+CLASS ID:id LLA class_def LLC {:detecta("Clase", id,(idleft+1));:} ;
+
+class_def ::= |
+fields_declaration ;
+
+fields_declaration ::=
+field_declaration | 
+field_declaration fields_declaration ;
+
+field_declaration ::=
+comment |
+method_declaration |
+modif method_declaration | 
+constructor_declaration | 
+modif constructor_declaration |
+variable_definition:id {:detecta("Variable global", id,(idleft+1));:}|
+modif variable_definition:id {:detecta("Variable global", id,(idleft+1));:};
+
+method_declaration ::=
+type ID:id PAA parameters PAC statement_block {:detecta("Método", id,(idleft+1));:};
+
+constructor_declaration ::=
+ID PAA parameters PAC statement_block ;
+
+variable_definition ::=
+type variable_definitor:id PCOMA {:RESULT=id;:};
+
+variable_definitor ::=
+ID:id IGUAL variable_initializer    {:RESULT=id;:};
+
+variable_initializer ::= expression; 
+
+expression ::= 
+literal | complex_id;
+
+parameters ::= |
+type ID parameter_list ;
+
+parameter_list ::= |
+COMA type ID parameter_list ;
+
+statement_block ::= 
+LLA statements LLC | 
+LLA LLC ;
+
+statements ::= statement | statement statements;
+
+statement ::=
+comment |
+variable_definition |
+variable_definitor PCOMA |
+IF:id PAA expression PAC statement_block else_if {:detecta("IF", "if",(idleft+1));:};
+
+else_if ::= |
+ELSE IF expression PAC statement_block else_if | 
+ELSE statement_block ;
+
+complex_id ::= 
+ID | 
+ID complex_id_body;
+
+complex_id_body ::=
+PUNTO ID complex_id_body ;
+
+modif ::=
+PUBLIC |
+PRIVATE |
+PROTECTED;
+
+literal ::=
+LINT | 
+LDOUBLE | 
+LBOOL |
+LCHAR | 
+LSTRING;
+
+type ::=
+ID | INT | LONG | DOUBLE | FLOAT | CHAR | SHORT | BYTE | BOOLEAN | STRING;
+
+comment ::=
+SLCOMMENT | 
+MLCOMMENT ;

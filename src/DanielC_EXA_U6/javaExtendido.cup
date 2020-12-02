@@ -1,0 +1,183 @@
+package DanielC_EXA_U6;
+import java_cup.runtime.*;
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.ArrayList;
+
+import java.util.HashMap;
+/* Parser code to change the way the parser reports errors (include
+   line and column number of the error and expected tokens). */
+parser code {:
+
+    String error = null;
+    public ArrayList<Deteccion> detecciones = new ArrayList<>();
+    private HashMap<String, String> mapa = new HashMap<>();
+    //Throws the exception after being generated on syntax_error
+    public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
+        throw new Exception(error);
+    }
+    //Generates the error message
+    public void syntax_error(Symbol s) {
+        //report_error("Error de sintaxis en linea " + s.left, null);
+        StringBuilder exceptionMessage = new StringBuilder();
+        //Se le tiene que insistir un poquito para que actualice los tokens esperados
+        report_expected_token_ids();
+        report_expected_token_ids();
+        List<Integer> expectedTokens=expected_token_ids();
+        
+        int line = ((Lexer)(getScanner())).getyyline();
+        int column = ((Lexer)(getScanner())).getyycolumn();
+        exceptionMessage.append(String.format("Error sintáctico.\nEn linea %d, columna %d se esperaba algún [", (line+1), (column+1)));
+        int expectedTokensCount=0;
+        for(int expectedTokenVal : expectedTokens){
+            String token = getTokenName(expectedTokenVal);
+            if(expectedTokensCount++>0) exceptionMessage.append(",");
+            exceptionMessage.append(token);
+        }
+        exceptionMessage.append("]");
+        error = exceptionMessage.toString();
+    }
+    //Gets a symbol name given its value
+    private String getTokenName(int expectedToken){
+        for(Field field : sym.class.getDeclaredFields()){
+            try{
+                int fieldVal=field.getInt(field);
+                if(expectedToken==fieldVal) return field.getName();
+            }
+            catch(Exception e){}
+        }
+        return "";
+    }
+    private void agregaAMapa(String key, String val){
+        mapa.put(key, val);
+    }
+    private void detecta(String token, String lexema, int linea){
+        detecciones.add(new Deteccion(token, lexema, linea+1));
+    }
+    private String getKey(String key){
+        return mapa.getOrDefault(key, "0");
+    }
+    private void detectaGlobal(String e, String id, int eleft){
+        if(e!=null) detecta("Variable global", id, eleft); 
+        else {
+            //Permite métodos a menos que se acerquen a la firma del main
+            //La única falla es que basta que el último parámetro sea String[]
+            if(getKey("modif").equals("public") &&
+                    getKey("static").equals("1") &&
+                    getKey("td").equals("void") &&
+                    getKey("nombre").equals("main") &&
+                    getKey("tdparam").equals("String") &&
+                    getKey("tdparamarr").equals("1")){
+            }
+            else{
+                detecta("Método", id, eleft);
+            }
+            mapa.clear();
+        }
+    }
+:};
+
+// MODIFICADORES DE ACCESO
+terminal String P_PUBLIC, P_PRIVATE, P_PROTECTED, P_DEFAULT;
+
+// TIPOS DE DATOSO
+terminal String P_BYTE, P_SHORT, P_INT, P_LONG, P_FLOAT; 
+terminal String P_DOUBLE, P_CHAR, P_BOOLEAN, P_CONST, P_VOID, P_STRING;
+
+// OPERADORES ARITMETICOS
+terminal String OP_SUM, OP_RES, OP_MUL, OP_DIV, OP_MOD, OP_ASIG;
+terminal String OP_SUMASIG, OP_RESASIG, OP_DIVASIG,  OP_MULASIG, OP_MODASIG;
+
+// OPERADORES RELACIONALES
+terminal String OPR_IG, OPR_DIF, OPR_MAY, OPR_MEN, OPR_MAYIG, OPR_MENIG;
+
+// OPERADORES LOGICOS
+terminal String OPL_AND, OPL_OR, OPL_ANDSIMP, OPL_ORSIMP;
+
+// OPERADORES UNARIOS
+terminal String OPU_INC, OPU_DEC, OPU_NEG;
+
+// VALORES
+terminal String P_NULL, P_TRUE, P_FALSE;
+
+// AGRUPACION
+terminal String AG_PA, AG_PC, AG_LLA, AG_LLC, AG_CA, AG_CC;
+
+// CICLOS Y CONDICIONALES
+terminal String P_DO, P_WHILE, P_FOR, P_BREAK, P_IF, P_ELSE, P_ELSEIF, P_SWITCH;
+terminal String P_CASE, P_TRY, P_CATCH, P_FINALLY, P_CONTINUE;
+
+// PUNTUACION
+terminal String UPT, DPT, TPT, CM, DP, CE, CMD, CMS;
+
+// PROPIEDADES Y OBJETOS
+terminal String P_ABSTRACT, P_STATIC, P_EXTENDS, P_IMPLEMENTS, P_CLASS, P_IMPORT;
+terminal String P_PACKAGE, P_NEW, P_FINAL;
+
+// METODOS
+terminal String P_THROWS, P_RETURN, COMENT; //P_MAIN
+
+// VALORES
+terminal String ID, VN, VD, VC, VS;
+
+
+non terminal String JAVA, IDEXT, RIMPORT, IMPORT, CLASS, ABST, CMODA, EXTENDS, IMPLE, IMIDEXT, IDEEXT;
+non terminal String BODY, CINS, GDEC, FIRMA, STATE, ENDEC, LPARAM, PARAM,PARAMV, THROWS, EXP, VAL, PRES, OP;
+non terminal String OPUN, LINS, INS, DEC, ASIG, MODA, TD, DIM, DIMS, FIND, INSTANCE, DIMNUM, ARRAY, LIST, RETURN, RETURNV;
+non terminal String COND, BOOL_OP, IF_INST, IF_BODY, IF_COMP, METH_CALL, METH_PARAM;
+
+precedence left OP_SUM, OP_RES, OP_MUL, OP_DIV , OP_MOD, OP_ASIG, OPL_AND, OPL_OR, OPL_ANDSIMP, OPL_ORSIMP; 
+precedence left OPR_IG, OPR_DIF, OPR_MAY, OPR_MEN, OPR_MAYIG, OPR_MENIG, OPU_INC, OPU_DEC;
+
+start with JAVA;
+
+JAVA ::= P_PACKAGE IDEXT CE RIMPORT CLASS | RIMPORT CLASS;
+RIMPORT  ::= RIMPORT IMPORT | ;
+IMPORT   ::= P_IMPORT IDEEXT CE;
+IDEXT    ::= IDEXT UPT ID | ID;
+IDEEXT	 ::= IDEXT UPT OP_MUL | IDEXT;
+CLASS    ::= CMODA P_CLASS  ABST ID:id EXTENDS IMPLE AG_LLA BODY AG_LLC {:detecta("Clase", id, idleft);:};
+ABST   	 ::= P_ABSTRACT | ;
+CMODA    ::= P_PUBLIC | ;
+EXTENDS  ::= P_EXTENDS IDEXT | ;
+IMPLE    ::= P_IMPLEMENTS IMIDEXT | ;
+IMIDEXT  ::= IDEXT CM IMIDEXT | IDEXT;
+BODY 	 ::= CINS BODY | ;
+CINS 	 ::= COMENT:c {:detecta("Comentario", c, cleft);:}| GDEC | CLASS;
+GDEC 	 ::= FIRMA:id ENDEC:e {:agregaAMapa("nombre", id); detectaGlobal(e, id, eleft);:};
+FIRMA 	 ::= MODA STATE TD DIM ID:id {:RESULT=id;:} ;
+STATE 	 ::= P_STATIC {:agregaAMapa("static", "1");:} | ;
+ENDEC 	 ::= FIND:f {:RESULT=f;:} | AG_PA LPARAM  AG_PC THROWS AG_LLA LINS AG_LLC ;
+LPARAM 	 ::= PARAM CM LPARAM | PARAM | PARAMV | ;
+PARAM 	 ::= TD DIM ID;
+PARAMV 	 ::= TD TPT ID;
+THROWS 	 ::= P_THROWS IDEXT | ;
+EXP 	 ::= AG_PA EXP AG_PC | OPUN EXP | EXP OPUN | OPU_NEG EXP | EXP OP  | VAL;
+VAL 	 ::= ID | VN | VD | VC | VS | PRES ;
+PRES 	 ::= P_NULL | P_TRUE | P_FALSE ;
+OP       ::= OP_SUM | OP_RES | OP_MUL | OP_DIV | OP_MOD | OP_ASIG | OPL_AND | OPL_OR | OPL_ANDSIMP | OPL_ORSIMP | BOOL_OP ;
+BOOL_OP  ::= OPR_IG | OPR_DIF | OPR_MAY | OPR_MEN | OPR_MAYIG | OPR_MENIG;
+OPUN 	 ::= OPU_INC | OPU_DEC ;
+LINS 	 ::= LINS INS | ;
+INS 	 ::= COMENT:c {:detecta("Comentario", c, cleft);:} | DEC | ASIG | METH_CALL CE | RETURN | RETURNV | IF_INST:id {:detecta("IF", "if", idleft);:};
+METH_CALL  ::= ID AG_PA METH_PARAM AG_PC | ID AG_PA AG_PC;
+METH_PARAM ::= ID | ID CM METH_PARAM;
+IF_INST  ::= P_IF IF_COMP IF_BODY | P_IF IF_COMP IF_BODY P_ELSE IF_INST | P_IF IF_COMP IF_BODY P_ELSE IF_BODY;
+IF_COMP  ::= AG_PA COND AG_PC;
+IF_BODY  ::= AG_LLA LINS AG_LLC;
+COND     ::= ID BOOL_OP ID | ID BOOL_OP ID OPL_AND COND;
+DEC 	 ::= TD ID FIND;
+ASIG 	 ::= ID OP_ASIG EXP CE | ID OP_ASIG METH_CALL CE;
+MODA 	 ::= P_PUBLIC{:agregaAMapa("modif", "public");:} | P_PROTECTED | P_PRIVATE | P_DEFAULT | ;
+TD 	 ::= P_BYTE | P_SHORT | P_INT | P_LONG | P_FLOAT | P_DOUBLE | P_CHAR | P_BOOLEAN | P_STRING {:agregaAMapa("tdparam", "String");:} | P_VOID {:agregaAMapa("td", "void");:} | ID;
+DIM 	 ::= DIMS |;
+DIMS	 ::= AG_CA AG_CC DIMS | AG_CA AG_CC {:agregaAMapa("tdparamarr", "1");:};
+
+FIND 	 ::= CE | OP_ASIG EXP CE | OP_ASIG ARRAY CE | OP_ASIG INSTANCE CE ;
+INSTANCE ::= P_NEW TD DIMNUM ;
+DIMNUM	 ::= AG_CA VN AG_CC DIMNUM |  AG_CA VN AG_CC;
+ARRAY	 ::= AG_LLA ARRAY AG_LLC | AG_LLA LIST AG_LLC CM ARRAY | AG_LLA LIST AG_LLC ;
+LIST	 ::= VAL CM LIST | VAL;
+
+RETURN 	 ::= P_RETURN EXP CE;
+RETURNV ::= P_RETURN CE;
